@@ -40,8 +40,11 @@ classes/{autoId}
   tutorName: "Amila Sir"
   startTime: Timestamp
   zoomUrl: "https://zoom.us/j/..."
+  classMessage: "Hi students, please join 5 minutes early..." (optional string)
   createdAt: Timestamp (server-generated)
 ```
+
+`classMessage` is optional and admin-only to set. Staff/students can view and copy it but never edit or delete it — the Firestore rules below already restrict all writes on `classes` to admins, so no extra rule is needed.
 
 ## 4. Recommended Firestore security rules
 
@@ -88,13 +91,15 @@ src/
   components/
     ProtectedRoute.jsx     Role-gated route wrapper
     Navbar.jsx              Top nav with user badge + logout
-    ClassCard.jsx           Featured (this week) & compact (upcoming) card variants
+    ClassCard.jsx           Featured (Today/Tomorrow/This Week) & compact (Upcoming) card variants — name, tutor, date/time, and a "View Details" button only
+    ClassDetailsModal.jsx   Overlay modal (opened by ClassCard, no route/new tab) — full details, class message + copy button, and the Join Class button all live here
+    ScheduleSection.jsx     Shared section header (icon, title, badge, count) — hides itself automatically when its group is empty
     AddClassModal.jsx       Admin-only "Add class" form
   pages/
     Login.jsx               Email/password sign-in, redirects by role
     AdminDashboard.jsx      Full CRUD (add/delete), live Firestore listener
     StaffDashboard.jsx      Read-only view, live Firestore listener
-  utils/dateHelpers.js      Monday–Sunday week bounds + this-week/upcoming split
+  utils/dateHelpers.js      Monday–Sunday week bounds + Today/Tomorrow/This Week/Upcoming categorization
   App.jsx                   Router + protected route wiring
   main.jsx                  App entry point
 ```
@@ -102,5 +107,8 @@ src/
 ## Notes
 
 - Both dashboards use `onSnapshot` for real-time updates — new classes added by an admin appear instantly for staff without a refresh.
-- "This week" is calculated as Monday 00:00 through Sunday 23:59, based on the viewer's local time.
-- Classes with a start time before the current week are excluded from both lists (treated as past).
+- Classes are grouped automatically (via `categorizeClasses` in `dateHelpers.js`) into four sections, in priority order: **Today's Classes** (red-tinted header, "Today" badge), **Tomorrow's Classes** (light-blue accent, "Tomorrow" badge), **This Week** (later in the Mon–Sun week, excluding today/tomorrow), and **Upcoming Classes** (after the current week, compact list). Each class belongs to exactly one group, sorted earliest-first within it.
+- Grouping compares calendar days (normalized to local midnight), so it's immune to time-of-day and rolls over months/years correctly (e.g. Dec 31 "today" → Jan 1 "tomorrow").
+- Any section with zero classes is hidden entirely — no empty headers or "0 classes" sections.
+- Classes with a start day before today are past classes and are excluded from every section (they stay in Firestore; nothing is auto-deleted).
+- Clicking "View Details" opens the Class Details modal in place (dark/blurred overlay, Escape key, click-outside, and the X icon all close it) — no route change, no new tab. It reuses the class data already loaded by the dashboard, so there's no extra Firestore read. The Zoom link and class message are never shown on the main dashboard cards.

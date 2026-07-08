@@ -27,31 +27,65 @@ export function getCurrentWeekBounds(referenceDate = new Date()) {
   return { weekStart, weekEnd }
 }
 
-// Splits a list of classes (each with a `startTime` field) into
-// "thisWeek" (within Mon–Sun of the current week) and "upcoming" (after this week).
-// Classes before the current week are excluded (considered past).
-export function splitClassesByWeek(classes) {
-  const { weekStart, weekEnd } = getCurrentWeekBounds()
+// Normalizes a Date to local midnight (strips hours/minutes/seconds/ms),
+// so day-to-day comparisons aren't thrown off by time-of-day or timezones.
+function startOfDay(date) {
+  const d = new Date(date)
+  d.setHours(0, 0, 0, 0)
+  return d
+}
 
-  const thisWeek = []
-  const upcoming = []
+// Groups classes into Today / Tomorrow / This Week / Upcoming based on the
+// class's startTime compared against the viewer's local date. Each class
+// belongs to exactly one group, in this priority order:
+//   1. Today       — classDay === today
+//   2. Tomorrow    — classDay === today + 1
+//   3. This Week   — after tomorrow, on or before the current week's Sunday
+//   4. Upcoming    — after the current week
+// Classes whose day is before today are past classes and are excluded from
+// every group (they're left in Firestore untouched, just not displayed).
+// Each group is sorted chronologically (date, then time), earliest first.
+// Date-only arithmetic via setDate()/setHours() correctly rolls over month
+// and year boundaries (e.g. Dec 31 -> today, Jan 1 -> tomorrow).
+export function categorizeClasses(classes) {
+  const today = startOfDay(new Date())
+
+  const tomorrow = new Date(today)
+  tomorrow.setDate(today.getDate() + 1)
+
+  const { weekEnd } = getCurrentWeekBounds(today)
+  const weekEndDay = startOfDay(weekEnd)
+
+  const groups = { today: [], tomorrow: [], thisWeek: [], upcoming: [] }
 
   for (const cls of classes) {
     const start = toJsDate(cls.startTime)
     if (!start) continue
 
-    if (start >= weekStart && start <= weekEnd) {
-      thisWeek.push(cls)
-    } else if (start > weekEnd) {
-      upcoming.push(cls)
+    const classDay = startOfDay(start)
+
+    if (classDay.getTime() < today.getTime()) {
+      continue // past class — not shown in any section
     }
-    // classes with start < weekStart are past classes and omitted from both lists
+
+    if (classDay.getTime() === today.getTime()) {
+      groups.today.push(cls)
+    } else if (classDay.getTime() === tomorrow.getTime()) {
+      groups.tomorrow.push(cls)
+    } else if (classDay.getTime() <= weekEndDay.getTime()) {
+      groups.thisWeek.push(cls)
+    } else {
+      groups.upcoming.push(cls)
+    }
   }
 
-  thisWeek.sort((a, b) => toJsDate(a.startTime) - toJsDate(b.startTime))
-  upcoming.sort((a, b) => toJsDate(a.startTime) - toJsDate(b.startTime))
+  const byStartTime = (a, b) => toJsDate(a.startTime) - toJsDate(b.startTime)
+  groups.today.sort(byStartTime)
+  groups.tomorrow.sort(byStartTime)
+  groups.thisWeek.sort(byStartTime)
+  groups.upcoming.sort(byStartTime)
 
-  return { thisWeek, upcoming }
+  return groups
 }
 
 export function formatClassDate(value) {

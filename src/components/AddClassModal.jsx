@@ -1,8 +1,8 @@
 // src/components/AddClassModal.jsx
 import { useState } from 'react'
-import { X, BookOpen, User, CalendarClock, Link2, Loader2 } from 'lucide-react'
+import { X, BookOpen, User, CalendarClock, Link2, MessageSquare, Loader2 } from 'lucide-react'
 
-const emptyForm = { className: '', tutorName: '', startTime: '', zoomUrl: '' }
+const emptyForm = { className: '', tutorName: '', startTime: '', zoomUrl: '', classMessage: '' }
 
 export default function AddClassModal({ open, onClose, onSubmit }) {
   const [form, setForm] = useState(emptyForm)
@@ -36,6 +36,7 @@ export default function AddClassModal({ open, onClose, onSubmit }) {
         tutorName: form.tutorName.trim(),
         startTime: new Date(form.startTime),
         zoomUrl: form.zoomUrl.trim(),
+        classMessage: form.classMessage.trim(),
       })
       setForm(emptyForm)
       onClose()
@@ -127,6 +128,21 @@ export default function AddClassModal({ open, onClose, onSubmit }) {
                 className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-sm outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-sm font-medium text-slate-700">Class message</label>
+            <div className="relative">
+              <MessageSquare className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" />
+              <textarea
+                rows={3}
+                value={form.classMessage}
+                onChange={(e) => update('classMessage', e.target.value)}
+                placeholder="Enter a message or class instructions for students..."
+                className="w-full resize-none rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-sm outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100"
+              />
+            </div>
+            <p className="mt-1 text-xs text-slate-400">Optional. Shown to students on the class card.</p>
           </div>
 
           <div className="flex gap-3 pt-2">
