@@ -1,6 +1,7 @@
 // src/components/AddClassModal.jsx
 import { useState } from 'react'
 import { X, BookOpen, User, CalendarClock, Link2, MessageSquare, Loader2 } from 'lucide-react'
+import { isValidZoomUrl } from '../utils/validators'
 
 const emptyForm = { className: '', tutorName: '', startTime: '', zoomUrl: '', classMessage: '' }
 
@@ -24,7 +25,7 @@ export default function AddClassModal({ open, onClose, onSubmit }) {
       return
     }
 
-    if (!/^https?:\/\/.+/i.test(form.zoomUrl.trim())) {
+    if (!isValidZoomUrl(form.zoomUrl)) {
       setError('Zoom link must be a valid URL (starting with http:// or https://).')
       return
     }

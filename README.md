@@ -112,3 +112,4 @@ src/
 - Any section with zero classes is hidden entirely — no empty headers or "0 classes" sections.
 - Classes with a start day before today are past classes and are excluded from every section (they stay in Firestore; nothing is auto-deleted).
 - Clicking "View Details" opens the Class Details modal in place (dark/blurred overlay, Escape key, click-outside, and the X icon all close it) — no route change, no new tab. It reuses the class data already loaded by the dashboard, so there's no extra Firestore read. The Zoom link and class message are never shown on the main dashboard cards.
+- Admins see an "Edit Details" button inside the Class Details modal (staff never see it) that swaps the view for an in-place edit form — class name, tutor, date/time, Zoom link, and class message — and saves via `updateDoc` on the same document. Editing the date automatically moves the class between Today/Tomorrow/This Week/Upcoming on the next render, with no manual refresh.

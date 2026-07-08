@@ -5,6 +5,7 @@ import {
   collection,
   onSnapshot,
   addDoc,
+  updateDoc,
   deleteDoc,
   doc,
   serverTimestamp,
@@ -64,6 +65,27 @@ export default function AdminDashboard() {
   function showToast(message, tone = 'success') {
     setToast({ message, tone })
     setTimeout(() => setToast(null), 2500)
+  }
+
+  async function handleUpdateClass(classId, updatedFields) {
+    try {
+      // onSnapshot below reflects the change immediately — the modal and the
+      // dashboard card both re-render with the fresh data, and the class is
+      // automatically re-categorized (Today/Tomorrow/This Week/Upcoming) if
+      // the date changed, with no manual refresh needed.
+      await updateDoc(doc(db, 'classes', classId), {
+        className: updatedFields.className,
+        tutorName: updatedFields.tutorName,
+        startTime: Timestamp.fromDate(updatedFields.startTime),
+        zoomUrl: updatedFields.zoomUrl,
+        classMessage: updatedFields.classMessage || '',
+      })
+      showToast('Class updated successfully', 'success')
+    } catch (err) {
+      console.error('Failed to update class:', err)
+      showToast('Failed to update class', 'error')
+      throw err
+    }
   }
 
   async function handleDeleteClass(classId) {
@@ -142,6 +164,7 @@ export default function AdminDashboard() {
                     variant="featured"
                     canManage
                     onDelete={handleDeleteClass}
+                    onUpdate={handleUpdateClass}
                     isDeleting={deletingIds.has(cls.id)}
                   />
                 ))}
@@ -165,6 +188,7 @@ export default function AdminDashboard() {
                     variant="featured"
                     canManage
                     onDelete={handleDeleteClass}
+                    onUpdate={handleUpdateClass}
                     isDeleting={deletingIds.has(cls.id)}
                   />
                 ))}
@@ -180,6 +204,7 @@ export default function AdminDashboard() {
                     variant="featured"
                     canManage
                     onDelete={handleDeleteClass}
+                    onUpdate={handleUpdateClass}
                     isDeleting={deletingIds.has(cls.id)}
                   />
                 ))}
@@ -202,6 +227,7 @@ export default function AdminDashboard() {
                     variant="compact"
                     canManage
                     onDelete={handleDeleteClass}
+                    onUpdate={handleUpdateClass}
                     isDeleting={deletingIds.has(cls.id)}
                   />
                 ))}

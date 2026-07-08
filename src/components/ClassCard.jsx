@@ -15,6 +15,7 @@ export default function ClassCard({
   variant = 'featured',
   canManage = false,
   onDelete,
+  onUpdate,
   isDeleting = false,
 }) {
   const { className, tutorName, startTime } = classData
@@ -76,7 +77,13 @@ export default function ClassCard({
           </div>
         </div>
 
-        <ClassDetailsModal open={detailsOpen} onClose={() => setDetailsOpen(false)} classData={classData} />
+        <ClassDetailsModal
+          open={detailsOpen}
+          onClose={() => setDetailsOpen(false)}
+          classData={classData}
+          canEdit={canManage}
+          onUpdate={onUpdate}
+        />
       </>
     )
   }
@@ -140,7 +147,13 @@ export default function ClassCard({
         </div>
       </div>
 
-      <ClassDetailsModal open={detailsOpen} onClose={() => setDetailsOpen(false)} classData={classData} />
+      <ClassDetailsModal
+        open={detailsOpen}
+        onClose={() => setDetailsOpen(false)}
+        classData={classData}
+        canEdit={canManage}
+        onUpdate={onUpdate}
+      />
     </>
   )
 }
