@@ -5,8 +5,8 @@ import { Video, Lock, Mail, Loader2, AlertCircle, Eye, EyeOff, CalendarClock, Bo
 import { useAuth } from '../context/AuthContext'
 
 const HIGHLIGHTS = [
+  { icon: BookOpen, text: 'Organize courses and track progress automatically' },
   { icon: CalendarClock, text: 'Live class schedules, always up to date' },
-  { icon: BookOpen, text: 'Course progress tracked automatically' },
   { icon: ShieldCheck, text: 'Role-based access for admins and staff' },
 ]
 
@@ -68,11 +68,11 @@ export default function Login() {
 
         <div className="relative z-10 px-12 py-14">
           <h2 className="max-w-sm text-3xl font-bold leading-tight text-white">
-            Every class link, in one place.
+            Manage every course, in one place.
           </h2>
           <p className="mt-4 max-w-sm text-sm leading-relaxed text-white/70">
-            The class link management system for CAD Academy — schedule, share, and track Zoom classes without the
-            spreadsheet chaos.
+            The course management system for CAD Academy — organize courses, schedule classes, and track
+            completion progress without the spreadsheet chaos.
           </p>
 
           <div className="mt-10 space-y-4">

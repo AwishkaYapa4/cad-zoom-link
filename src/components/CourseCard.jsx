@@ -13,6 +13,7 @@ export default function CourseCard({
   completedClasses,
   remainingClasses,
   detailsTo = `/admin/course/${courseId}`,
+  onViewDetails,
 }) {
   const progressPct = totalClasses > 0 ? Math.min(100, Math.round((completedClasses / totalClasses) * 100)) : 0
   const isComplete = totalClasses > 0 && completedClasses >= totalClasses
@@ -56,13 +57,23 @@ export default function CourseCard({
         <ProgressBar value={completedClasses} max={totalClasses} showLabel={false} barClassName="w-full" />
       </div>
 
-      <Link
-        to={detailsTo}
-        className="mt-auto flex items-center justify-center gap-2 rounded-xl bg-brand-600 py-2.5 text-sm font-bold text-white shadow-soft transition hover:bg-brand-700 active:scale-[0.99]"
-      >
-        View Details
-        <ArrowUpRight className="h-4 w-4" />
-      </Link>
+      {onViewDetails ? (
+        <button
+          onClick={() => onViewDetails(courseId)}
+          className="mt-auto flex items-center justify-center gap-2 rounded-xl bg-brand-600 py-2.5 text-sm font-bold text-white shadow-soft transition hover:bg-brand-700 active:scale-[0.99]"
+        >
+          View Details
+          <ArrowUpRight className="h-4 w-4" />
+        </button>
+      ) : (
+        <Link
+          to={detailsTo}
+          className="mt-auto flex items-center justify-center gap-2 rounded-xl bg-brand-600 py-2.5 text-sm font-bold text-white shadow-soft transition hover:bg-brand-700 active:scale-[0.99]"
+        >
+          View Details
+          <ArrowUpRight className="h-4 w-4" />
+        </Link>
+      )}
     </div>
   )
 }

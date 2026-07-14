@@ -5,6 +5,8 @@ import { BookOpen, CalendarDays, CheckCircle2, Clock3, Inbox, Loader2, Sparkles 
 import { db } from '../firebase/config'
 import StatCard from '../components/StatCard'
 import CourseCard from '../components/CourseCard'
+import CourseDetailsModal from '../components/CourseDetailsModal'
+import UserCourseDetailsModal from '../components/UserCourseDetailsModal'
 import { StatCardSkeletonGrid, CourseCardSkeletonGrid } from '../components/Skeleton'
 import { useAuth } from '../context/AuthContext'
 import { toJsDate, formatClassDate, formatClassTime } from '../utils/dateHelpers'
@@ -14,6 +16,7 @@ export default function Dashboard() {
   const [courses, setCourses] = useState([])
   const [classes, setClasses] = useState([])
   const [loading, setLoading] = useState(true)
+  const [modalCourseId, setModalCourseId] = useState(null)
 
   useEffect(() => {
     let coursesLoaded = false
@@ -60,10 +63,14 @@ export default function Dashboard() {
         totalClasses: totalForRow,
         completedClasses: completedLive,
         remainingClasses: remaining,
-        detailsTo: isAdmin ? `/admin/course/${course.id}` : `/staff/course/${course.id}`,
+        // Both roles open a details popup in place now — admin gets the
+        // full manage view (CourseDetailsModal), staff gets the read-only
+        // schedule view (UserCourseDetailsModal). Which one actually
+        // renders is decided below, gated by role.
+        onViewDetails: setModalCourseId,
       }
     })
-  }, [courses, classes, isAdmin])
+  }, [courses, classes])
 
   const recentCourses = useMemo(
     () =>
@@ -190,6 +197,20 @@ export default function Dashboard() {
           )}
         </div>
       </div>
+
+      {isAdmin ? (
+        <CourseDetailsModal
+          open={Boolean(modalCourseId)}
+          courseId={modalCourseId}
+          onClose={() => setModalCourseId(null)}
+        />
+      ) : (
+        <UserCourseDetailsModal
+          open={Boolean(modalCourseId)}
+          courseId={modalCourseId}
+          onClose={() => setModalCourseId(null)}
+        />
+      )}
     </>
   )
 }
