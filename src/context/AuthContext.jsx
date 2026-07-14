@@ -19,36 +19,45 @@ export function useAuth() {
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null)
   const [role, setRole] = useState(null)
+  const [userName, setUserName] = useState(null)
   const [loading, setLoading] = useState(true)
   const [authError, setAuthError] = useState(null)
 
-  // Look up the role for a given uid in the `users` collection.
-  // Expected doc shape: users/{uid} => { role: 'admin' | 'staff', email, name? }
-  async function fetchUserRole(uid) {
+  // Look up the role (and optional display name) for a given uid in the
+  // `users` collection. Expected doc shape:
+  // users/{uid} => { role: 'admin' | 'staff', email, name? }
+  async function fetchUserProfile(uid) {
     try {
       const userDocRef = doc(db, 'users', uid)
       const userDocSnap = await getDoc(userDocRef)
       if (userDocSnap.exists()) {
-        return userDocSnap.data().role ?? null
+        const data = userDocSnap.data()
+        return { role: data.role ?? null, name: data.name ?? null }
       }
-      return null
+      return { role: null, name: null }
     } catch (err) {
-      console.error('Failed to fetch user role:', err)
-      return null
+      console.error('Failed to fetch user profile:', err)
+      return { role: null, name: null }
     }
+  }
+
+  function applyProfile(profile, fallbackEmail) {
+    setRole(profile.role)
+    setUserName(profile.name || fallbackEmail?.split('@')[0] || null)
   }
 
   async function login(email, password) {
     setAuthError(null)
     const credential = await signInWithEmailAndPassword(auth, email, password)
-    const userRole = await fetchUserRole(credential.user.uid)
-    setRole(userRole)
-    return userRole
+    const profile = await fetchUserProfile(credential.user.uid)
+    applyProfile(profile, credential.user.email)
+    return profile.role
   }
 
   async function logout() {
     await signOut(auth)
     setRole(null)
+    setUserName(null)
   }
 
   useEffect(() => {
@@ -56,11 +65,12 @@ export function AuthProvider({ children }) {
       setLoading(true)
       if (user) {
         setCurrentUser(user)
-        const userRole = await fetchUserRole(user.uid)
-        setRole(userRole)
+        const profile = await fetchUserProfile(user.uid)
+        applyProfile(profile, user.email)
       } else {
         setCurrentUser(null)
         setRole(null)
+        setUserName(null)
       }
       setLoading(false)
     })
@@ -71,6 +81,7 @@ export function AuthProvider({ children }) {
   const value = {
     currentUser,
     role,
+    userName,
     loading,
     authError,
     login,

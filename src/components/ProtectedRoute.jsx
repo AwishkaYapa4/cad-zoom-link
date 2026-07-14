@@ -25,8 +25,8 @@ export default function ProtectedRoute({ children, allowedRole }) {
 
   if (allowedRole && role !== allowedRole) {
     // Logged in, but wrong role — send them to their own dashboard instead of blank.
-    if (role === 'admin') return <Navigate to="/admin" replace />
-    if (role === 'staff') return <Navigate to="/staff" replace />
+    if (role === 'admin') return <Navigate to="/admin/dashboard" replace />
+    if (role === 'staff') return <Navigate to="/staff/dashboard" replace />
     return <Navigate to="/login" replace />
   }
 

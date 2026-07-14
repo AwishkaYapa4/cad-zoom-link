@@ -13,10 +13,21 @@ import {
   BookOpen,
   CalendarClock,
   Link2,
+  Hash,
+  ListChecks,
+  CheckCircle2,
   Loader2,
 } from 'lucide-react'
 import { formatClassDate, formatClassTime, toJsDate, toDateTimeLocalString } from '../utils/dateHelpers'
 import { isValidZoomUrl } from '../utils/validators'
+
+const STATUS_LABELS = { scheduled: 'Scheduled', rescheduled: 'Rescheduled', cancelled: 'Cancelled', completed: 'Completed' }
+const STATUS_STYLES = {
+  scheduled: 'bg-brand-50 text-brand-700',
+  rescheduled: 'bg-amber-50 text-amber-700',
+  cancelled: 'bg-red-50 text-red-700',
+  completed: 'bg-green-50 text-green-700',
+}
 
 // "Class Details" overlay shown on top of the Class Links page. Reuses the
 // classData already fetched by the dashboard's onSnapshot listener — no
@@ -25,7 +36,7 @@ import { isValidZoomUrl } from '../utils/validators'
 // Admins (canEdit) get an "Edit Details" button that swaps the read-only
 // view for an edit form in place, and saves via the existing `onUpdate`
 // callback (which performs the actual Firestore updateDoc upstream).
-export default function ClassDetailsModal({ open, onClose, classData, canEdit = false, onUpdate }) {
+export default function ClassDetailsModal({ open, onClose, classData, canEdit = false, onUpdate, onToggleComplete }) {
   const [visible, setVisible] = useState(false)
   const [copied, setCopied] = useState(false)
   const [showToast, setShowToast] = useState(false)
@@ -73,11 +84,17 @@ export default function ClassDetailsModal({ open, onClose, classData, canEdit = 
 
   if (!open || !classData) return null
 
-  const { className, tutorName, startTime, zoomUrl, classMessage } = classData
+  const { className, tutorName, startTime, zoomUrl, classMessage, classNumber, status, completed, courseName } =
+    classData
   const hasMessage = Boolean(classMessage && classMessage.trim())
+  const statusKey = status || 'scheduled'
 
   function handleJoin() {
     if (zoomUrl) window.open(zoomUrl, '_blank', 'noopener,noreferrer')
+  }
+
+  function handleToggleComplete() {
+    onToggleComplete?.(classData.id, !completed)
   }
 
   async function handleCopyMessage() {
@@ -100,6 +117,8 @@ export default function ClassDetailsModal({ open, onClose, classData, canEdit = 
       startTime: toDateTimeLocalString(toJsDate(startTime)),
       zoomUrl: zoomUrl || '',
       classMessage: classMessage || '',
+      classNumber: classNumber != null ? String(classNumber) : '',
+      status: status === 'completed' ? 'scheduled' : status || 'scheduled',
     })
     setEditError('')
     setEditing(true)
@@ -118,8 +137,14 @@ export default function ClassDetailsModal({ open, onClose, classData, canEdit = 
     e.preventDefault()
     setEditError('')
 
-    if (!form.className.trim() || !form.tutorName.trim() || !form.startTime || !form.zoomUrl.trim()) {
+    if (!form.className.trim() || !form.tutorName.trim() || !form.startTime || !form.zoomUrl.trim() || form.classNumber === '') {
       setEditError('Please fill in every field.')
+      return
+    }
+
+    const parsedClassNumber = Number(form.classNumber)
+    if (!Number.isInteger(parsedClassNumber) || parsedClassNumber < 1) {
+      setEditError('Class number must be a whole number, 1 or greater.')
       return
     }
 
@@ -136,6 +161,8 @@ export default function ClassDetailsModal({ open, onClose, classData, canEdit = 
         startTime: new Date(form.startTime),
         zoomUrl: form.zoomUrl.trim(),
         classMessage: form.classMessage.trim(),
+        classNumber: parsedClassNumber,
+        status: form.status,
       })
       setEditing(false)
     } catch (err) {
@@ -193,16 +220,32 @@ export default function ClassDetailsModal({ open, onClose, classData, canEdit = 
                 <div className="rounded-xl bg-red-50 px-4 py-2.5 text-sm text-red-700">{editError}</div>
               )}
 
-              <div>
-                <label className="mb-1.5 block text-sm font-medium text-slate-700">Class name</label>
-                <div className="relative">
-                  <BookOpen className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    value={form.className}
-                    onChange={(e) => updateField('className', e.target.value)}
-                    className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-sm outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100"
-                  />
+              <div className="grid grid-cols-3 gap-3">
+                <div className="col-span-2">
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">Class title</label>
+                  <div className="relative">
+                    <BookOpen className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      value={form.className}
+                      onChange={(e) => updateField('className', e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-sm outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-sm font-medium text-slate-700">Class #</label>
+                  <div className="relative">
+                    <Hash className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="number"
+                      min="1"
+                      step="1"
+                      value={form.classNumber}
+                      onChange={(e) => updateField('classNumber', e.target.value)}
+                      className="w-full rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-8 pr-2 text-sm outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -246,6 +289,22 @@ export default function ClassDetailsModal({ open, onClose, classData, canEdit = 
               </div>
 
               <div>
+                <label className="mb-1.5 block text-sm font-medium text-slate-700">Status</label>
+                <div className="relative">
+                  <ListChecks className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                  <select
+                    value={form.status}
+                    onChange={(e) => updateField('status', e.target.value)}
+                    className="w-full appearance-none rounded-xl border border-slate-200 bg-slate-50 py-2.5 pl-10 pr-3 text-sm outline-none transition focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-100"
+                  >
+                    <option value="scheduled">Scheduled</option>
+                    <option value="rescheduled">Rescheduled</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
                 <label className="mb-1.5 block text-sm font-medium text-slate-700">Class message</label>
                 <div className="relative">
                   <MessageSquare className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-400" />
@@ -280,6 +339,23 @@ export default function ClassDetailsModal({ open, onClose, classData, canEdit = 
             </form>
           ) : (
             <>
+              <div className="mb-5 flex flex-wrap items-center gap-2">
+                {courseName && (
+                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                    {courseName}
+                  </span>
+                )}
+                {classNumber != null && (
+                  <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-600">
+                    Class #{classNumber}
+                  </span>
+                )}
+                <span className={`flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_STYLES[statusKey]}`}>
+                  {completed && <CheckCircle2 className="h-3 w-3" />}
+                  {STATUS_LABELS[statusKey]}
+                </span>
+              </div>
+
               <div className="mb-5">
                 <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-400">Class Name</p>
                 <p className="text-base font-bold leading-snug text-slate-900">{className}</p>
@@ -326,13 +402,28 @@ export default function ClassDetailsModal({ open, onClose, classData, canEdit = 
                 </div>
               )}
 
-              <button
-                onClick={handleJoin}
-                className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 text-sm font-bold text-white shadow-soft transition hover:bg-brand-700 active:scale-[0.99]"
-              >
-                <Video className="h-4 w-4" />
-                Join Class
-              </button>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleJoin}
+                  className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 text-sm font-bold text-white shadow-soft transition hover:bg-brand-700 active:scale-[0.99]"
+                >
+                  <Video className="h-4 w-4" />
+                  Join Class
+                </button>
+                {canEdit && (
+                  <button
+                    onClick={handleToggleComplete}
+                    className={`flex flex-shrink-0 items-center justify-center gap-1.5 rounded-xl px-4 py-3 text-sm font-bold transition active:scale-[0.99] ${
+                      completed
+                        ? 'bg-green-50 text-green-700 hover:bg-green-100'
+                        : 'border border-slate-200 text-slate-600 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700'
+                    }`}
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    {completed ? 'Completed' : 'Mark as Completed'}
+                  </button>
+                )}
+              </div>
             </>
           )}
         </div>

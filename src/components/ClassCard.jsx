@@ -1,8 +1,16 @@
 // src/components/ClassCard.jsx
 import { useState } from 'react'
-import { Video, User, Clock, Calendar, Trash2, Loader2, ArrowUpRight } from 'lucide-react'
+import { Video, User, Clock, Calendar, Trash2, Loader2, ArrowUpRight, CheckCircle2, Circle, Check } from 'lucide-react'
 import { formatClassDate, formatClassTime } from '../utils/dateHelpers'
 import ClassDetailsModal from './ClassDetailsModal'
+
+const STATUS_LABELS = { scheduled: 'Scheduled', rescheduled: 'Rescheduled', cancelled: 'Cancelled', completed: 'Completed' }
+const STATUS_STYLES = {
+  scheduled: 'bg-brand-50 text-brand-700',
+  rescheduled: 'bg-amber-50 text-amber-700',
+  cancelled: 'bg-red-50 text-red-700',
+  completed: 'bg-green-50 text-green-700',
+}
 
 // `variant="featured"` -> large card used for "This Week's Classes"
 // `variant="compact"`  -> small list-row card used for "Upcoming Classes"
@@ -16,9 +24,11 @@ export default function ClassCard({
   canManage = false,
   onDelete,
   onUpdate,
+  onToggleComplete,
   isDeleting = false,
 }) {
-  const { className, tutorName, startTime } = classData
+  const { className, tutorName, startTime, status, completed, courseName } = classData
+  const statusKey = status || 'scheduled'
   const [detailsOpen, setDetailsOpen] = useState(false)
 
   // Stops the click from bubbling to (or firing alongside) the "View Details"
@@ -29,6 +39,25 @@ export default function ClassCard({
     if (isDeleting) return
     onDelete?.(classData.id)
   }
+
+  function handleToggleClick(e) {
+    e.stopPropagation()
+    e.preventDefault()
+    onToggleComplete?.(classData.id, !completed)
+  }
+
+  const badges = (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {courseName && (
+        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-500">
+          {courseName}
+        </span>
+      )}
+      <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${STATUS_STYLES[statusKey]}`}>
+        {STATUS_LABELS[statusKey]}
+      </span>
+    </div>
+  )
 
   if (variant === 'compact') {
     return (
@@ -48,10 +77,23 @@ export default function ClassCard({
               <p className="truncate text-xs text-slate-400">
                 {tutorName} · {formatClassTime(startTime)}
               </p>
+              <div className="mt-1">{badges}</div>
             </div>
           </div>
 
           <div className="flex flex-shrink-0 items-center gap-2">
+            {canManage && (
+              <button
+                type="button"
+                onClick={handleToggleClick}
+                className={`flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg transition ${
+                  completed ? 'text-green-600 hover:bg-green-50' : 'text-slate-300 hover:bg-slate-100 hover:text-slate-500'
+                }`}
+                aria-label={completed ? 'Mark as not completed' : 'Mark as completed'}
+              >
+                {completed ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
+              </button>
+            )}
             <button
               onClick={() => setDetailsOpen(true)}
               className="flex items-center gap-1 rounded-lg bg-brand-50 px-2.5 py-1.5 text-xs font-semibold text-brand-700 transition hover:bg-brand-100"
@@ -83,6 +125,7 @@ export default function ClassCard({
           classData={classData}
           canEdit={canManage}
           onUpdate={onUpdate}
+          onToggleComplete={onToggleComplete}
         />
       </>
     )
@@ -115,6 +158,8 @@ export default function ClassCard({
             <Video className="h-5 w-5 text-white" />
           </div>
 
+          <div className="mb-2">{badges}</div>
+
           <h3 className="mb-2 line-clamp-2 min-h-[3.25rem] text-lg font-bold leading-snug text-slate-900">
             {className}
           </h3>
@@ -135,14 +180,28 @@ export default function ClassCard({
             </span>
           </div>
 
-          <div className="mt-auto pt-6">
+          <div className="mt-auto flex gap-2 pt-6">
             <button
               onClick={() => setDetailsOpen(true)}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 text-sm font-bold text-white shadow-soft transition hover:bg-brand-700 active:scale-[0.99]"
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-brand-600 py-3 text-sm font-bold text-white shadow-soft transition hover:bg-brand-700 active:scale-[0.99]"
             >
               View Details
               <ArrowUpRight className="h-4 w-4" />
             </button>
+            {canManage && (
+              <button
+                type="button"
+                onClick={handleToggleClick}
+                className={`flex flex-shrink-0 items-center justify-center gap-1.5 rounded-xl px-3.5 py-3 text-sm font-bold transition active:scale-[0.99] ${
+                  completed
+                    ? 'bg-green-50 text-green-700 hover:bg-green-100'
+                    : 'border border-slate-200 text-slate-600 hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700'
+                }`}
+              >
+                <Check className="h-4 w-4" />
+                {completed ? 'Completed' : 'Mark Completed'}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -153,6 +212,7 @@ export default function ClassCard({
         classData={classData}
         canEdit={canManage}
         onUpdate={onUpdate}
+        onToggleComplete={onToggleComplete}
       />
     </>
   )

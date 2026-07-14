@@ -2,9 +2,19 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
+import AppLayout from './components/AppLayout'
+import AdminLayout from './components/AdminLayout'
 import Login from './pages/Login'
-import AdminDashboard from './pages/AdminDashboard'
-import StaffDashboard from './pages/StaffDashboard'
+import Dashboard from './pages/Dashboard'
+import ClassLinks from './pages/ClassLinks'
+import Courses from './pages/Courses'
+import AdminCourseDetails from './pages/AdminCourseDetails'
+import Reports from './pages/Reports'
+import CalendarPage from './pages/CalendarPage'
+import Settings from './pages/Settings'
+import StaffClassLinks from './pages/StaffClassLinks'
+import UserCourseDetails from './pages/UserCourseDetails'
+import UserCalendarPage from './pages/UserCalendarPage'
 
 // Sends an already-logged-in user straight to their dashboard,
 // and sends a logged-out user to /login. Used for the root path.
@@ -20,8 +30,8 @@ function RootRedirect() {
   }
 
   if (!currentUser) return <Navigate to="/login" replace />
-  if (role === 'admin') return <Navigate to="/admin" replace />
-  if (role === 'staff') return <Navigate to="/staff" replace />
+  if (role === 'admin') return <Navigate to="/admin/dashboard" replace />
+  if (role === 'staff') return <Navigate to="/staff/dashboard" replace />
 
   // Logged in, but no role assigned in Firestore yet.
   return <Navigate to="/login" replace />
@@ -36,19 +46,34 @@ function AppRoutes() {
         path="/admin"
         element={
           <ProtectedRoute allowedRole="admin">
-            <AdminDashboard />
+            <AdminLayout />
           </ProtectedRoute>
         }
-      />
+      >
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="classes" element={<ClassLinks />} />
+        <Route path="courses" element={<Courses />} />
+        <Route path="course/:courseId" element={<AdminCourseDetails />} />
+        <Route path="calendar" element={<CalendarPage />} />
+        <Route path="reports" element={<Reports />} />
+        <Route path="settings" element={<Settings />} />
+      </Route>
 
       <Route
         path="/staff"
         element={
           <ProtectedRoute allowedRole="staff">
-            <StaffDashboard />
+            <AppLayout />
           </ProtectedRoute>
         }
-      />
+      >
+        <Route index element={<Navigate to="dashboard" replace />} />
+        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="classes" element={<StaffClassLinks />} />
+        <Route path="course/:courseId" element={<UserCourseDetails />} />
+        <Route path="calendar" element={<UserCalendarPage />} />
+      </Route>
 
       <Route path="/" element={<RootRedirect />} />
       <Route path="*" element={<RootRedirect />} />

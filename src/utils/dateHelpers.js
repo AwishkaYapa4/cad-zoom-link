@@ -43,7 +43,9 @@ function startOfDay(date) {
 //   3. This Week   — after tomorrow, on or before the current week's Sunday
 //   4. Upcoming    — after the current week
 // Classes whose day is before today are past classes and are excluded from
-// every group (they're left in Firestore untouched, just not displayed).
+// every group (they're left in Firestore untouched, just not displayed —
+// a class's date passing never changes its `completed` field; that's only
+// ever set by an explicit admin action).
 // Each group is sorted chronologically (date, then time), earliest first.
 // Date-only arithmetic via setDate()/setHours() correctly rolls over month
 // and year boundaries (e.g. Dec 31 -> today, Jan 1 -> tomorrow).
@@ -114,3 +116,42 @@ export function toDateTimeLocalString(date) {
   const pad = (n) => String(n).padStart(2, '0')
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
+
+// Converts a Date to the yyyy-MM-dd string format needed by <input type="date">.
+export function toDateInputString(date) {
+  if (!date) return ''
+  const d = new Date(date)
+  const pad = (n) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+// Parses a yyyy-MM-dd string (from <input type="date">) as local midnight,
+// avoiding the UTC day-shift that bare `new Date(dateStr)` causes in
+// negative-offset timezones.
+export function fromDateInputString(dateStr) {
+  if (!dateStr) return null
+  return new Date(`${dateStr}T00:00:00`)
+}
+
+// Returns a 6x7 grid of Dates (Sunday-first weeks) covering the given
+// month, including the leading/trailing days from adjacent months needed
+// to fill each week. Each cell also carries `inMonth` so the caller can
+// dim days that belong to the previous/next month.
+export function getMonthGrid(year, month) {
+  const firstOfMonth = new Date(year, month, 1)
+  const startOffset = firstOfMonth.getDay() // 0 = Sunday
+  const gridStart = new Date(year, month, 1 - startOffset)
+
+  const weeks = []
+  let cursor = new Date(gridStart)
+  for (let week = 0; week < 6; week++) {
+    const days = []
+    for (let day = 0; day < 7; day++) {
+      days.push({ date: new Date(cursor), inMonth: cursor.getMonth() === month })
+      cursor.setDate(cursor.getDate() + 1)
+    }
+    weeks.push(days)
+  }
+  return weeks
+}
+

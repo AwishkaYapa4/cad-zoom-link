@@ -32,21 +32,43 @@ users/{uid}
 
 Create these manually the first time (Firestore console → Start collection → `users` → doc ID = the uid from Authentication → add field `role`).
 
+**`courses` collection** — auto-generated doc IDs:
+
+```
+courses/{autoId}
+  courseName: "React Development"
+  description: "..."
+  instructorName: "Amila Sir"
+  startDate: Timestamp
+  endDate: Timestamp
+  status: "active" | "inactive"
+  totalClasses: 24
+  createdAt: Timestamp (server-generated)
+  updatedAt: Timestamp (server-generated)
+```
+
 **`classes` collection** — auto-generated doc IDs:
 
 ```
 classes/{autoId}
+  courseId: "<courses doc id>" (absent/null on classes created before the Courses module existed)
+  classNumber: 1
   className: "2026 A/L Physics"
   tutorName: "Amila Sir"
   startTime: Timestamp
   zoomUrl: "https://zoom.us/j/..."
+  status: "scheduled" | "rescheduled" | "cancelled"
+  completed: false
   classMessage: "Hi students, please join 5 minutes early..." (optional string)
   createdAt: Timestamp (server-generated)
+  updatedAt: Timestamp (server-generated)
 ```
 
 `classMessage` is optional and admin-only to set. Staff/students can view and copy it but never edit or delete it — the Firestore rules below already restrict all writes on `classes` to admins, so no extra rule is needed.
 
 ## 4. Recommended Firestore security rules
+
+Also checked in at [`firestore.rules`](firestore.rules) — paste this into Firebase Console → Firestore Database → Rules (there's no Firebase CLI config in this repo, so rules must be updated manually there; a `firestore deploy` won't happen automatically).
 
 ```
 rules_version = '2';
@@ -63,6 +85,11 @@ service cloud.firestore {
     }
 
     match /classes/{classId} {
+      allow read: if request.auth != null;
+      allow create, update, delete: if request.auth != null && getRole() == 'admin';
+    }
+
+    match /courses/{courseId} {
       allow read: if request.auth != null;
       allow create, update, delete: if request.auth != null && getRole() == 'admin';
     }
