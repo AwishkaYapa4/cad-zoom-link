@@ -17,6 +17,7 @@ import CourseModal from '../components/CourseModal'
 import ProgressBar from '../components/ProgressBar'
 import { TableRowSkeleton } from '../components/Skeleton'
 import { formatClassDate } from '../utils/dateHelpers'
+import { getCourseCompletion } from '../utils/courseProgress'
 
 export default function Courses() {
   const [courses, setCourses] = useState([])
@@ -28,7 +29,15 @@ export default function Courses() {
 
   const [modalOpen, setModalOpen] = useState(false)
   const [modalMode, setModalMode] = useState('create')
-  const [editingCourse, setEditingCourse] = useState(null)
+  const [editingCourseId, setEditingCourseId] = useState(null)
+
+  // Derived live from `courses` (rather than a snapshot captured on open) so
+  // the Course Progress checklist inside CourseModal reflects each checkbox
+  // toggle immediately, without needing to close and reopen the modal.
+  const editingCourse = useMemo(
+    () => (editingCourseId ? courses.find((c) => c.id === editingCourseId) ?? null : null),
+    [courses, editingCourseId]
+  )
 
   useEffect(() => {
     const unsubCourses = onSnapshot(
@@ -64,14 +73,18 @@ export default function Courses() {
     return map
   }, [classes])
 
-  const completedCountByCourse = useMemo(() => {
+  // Blends real completed classes with the course's own "Course Progress"
+  // checklist (see getCourseCompletion) — used for the table's Total/
+  // Completed/Remaining/Progress columns. `classCountByCourse` above stays
+  // real-classes-only since it's used for the delete-warning message about
+  // linked class records specifically.
+  const completionByCourse = useMemo(() => {
     const map = new Map()
-    for (const cls of classes) {
-      if (!cls.courseId || !cls.completed) continue
-      map.set(cls.courseId, (map.get(cls.courseId) || 0) + 1)
+    for (const course of courses) {
+      map.set(course.id, getCourseCompletion(course, classes))
     }
     return map
-  }, [classes])
+  }, [courses, classes])
 
   function showToast(message, tone = 'success') {
     setToast({ message, tone })
@@ -80,13 +93,13 @@ export default function Courses() {
 
   function openCreateModal() {
     setModalMode('create')
-    setEditingCourse(null)
+    setEditingCourseId(null)
     setModalOpen(true)
   }
 
   function openEditModal(course) {
     setModalMode('edit')
-    setEditingCourse(course)
+    setEditingCourseId(course.id)
     setModalOpen(true)
   }
 
@@ -185,9 +198,11 @@ export default function Courses() {
                   <TableRowSkeleton rows={4} columns={9} />
                 ) : (
                   courses.map((course, i) => {
-                  const completed = completedCountByCourse.get(course.id) || 0
-                  const total = course.totalClasses || classCountByCourse.get(course.id) || 0
-                  const remaining = Math.max(0, total - completed)
+                  const { total, completed, remaining } = completionByCourse.get(course.id) || {
+                    total: 0,
+                    completed: 0,
+                    remaining: 0,
+                  }
                   return (
                   <tr
                     key={course.id}
@@ -274,7 +289,6 @@ export default function Courses() {
         open={modalOpen}
         mode={modalMode}
         initialCourse={editingCourse}
-        courseClasses={editingCourse ? classes.filter((c) => c.courseId === editingCourse.id) : []}
         onClose={() => setModalOpen(false)}
         onSubmit={handleSubmitCourse}
       />

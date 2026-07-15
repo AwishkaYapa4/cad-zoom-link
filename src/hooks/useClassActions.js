@@ -60,38 +60,6 @@ export function useClassActions() {
     }
   }
 
-  // Used by the Course Progress checklist in CourseModal: toggles completion
-  // for a given class number within a course. If a class doc for that
-  // number already exists, it's updated in place; otherwise a lightweight
-  // placeholder class is created (title/tutor/date default from the course
-  // so the rest of the app — Class Links, cards — still has valid fields to
-  // render; the admin can fill in the real title/Zoom link/time later).
-  async function setClassProgress(course, classNumber, completed, existingClassId) {
-    const status = completed ? 'completed' : 'scheduled'
-    try {
-      if (existingClassId) {
-        await updateDoc(doc(db, 'classes', existingClassId), { completed, status, updatedAt: serverTimestamp() })
-      } else {
-        await addDoc(collection(db, 'classes'), {
-          courseId: course.id,
-          classNumber,
-          className: `Class ${classNumber}`,
-          tutorName: course.instructorName || '',
-          startTime: course.startDate instanceof Timestamp ? course.startDate : Timestamp.now(),
-          zoomUrl: '',
-          status,
-          completed,
-          classMessage: '',
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        })
-      }
-    } catch (err) {
-      console.error('Failed to update class progress:', err)
-      throw err
-    }
-  }
-
   async function deleteClass(classId) {
     if (deletingIds.has(classId)) return // a delete for this class is already in flight
 
@@ -115,5 +83,5 @@ export function useClassActions() {
     }
   }
 
-  return { addClass, updateClass, deleteClass, toggleComplete, setClassProgress, deletingIds, toast }
+  return { addClass, updateClass, deleteClass, toggleComplete, deletingIds, toast }
 }

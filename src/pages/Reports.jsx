@@ -7,6 +7,7 @@ import StatCard from '../components/StatCard'
 import DonutChart from '../components/DonutChart'
 import ProgressBar from '../components/ProgressBar'
 import { StatCardSkeletonGrid, Skeleton } from '../components/Skeleton'
+import { getCourseCompletion } from '../utils/courseProgress'
 
 export default function Reports() {
   const [courses, setCourses] = useState([])
@@ -49,9 +50,7 @@ export default function Reports() {
   const courseRows = useMemo(() => {
     return courses
       .map((course) => {
-        const courseClasses = classes.filter((c) => c.courseId === course.id)
-        const completed = courseClasses.filter((c) => c.completed).length
-        const total = course.totalClasses || courseClasses.length
+        const { total, completed } = getCourseCompletion(course, classes)
         return { id: course.id, courseName: course.courseName, completed, total }
       })
       .sort((a, b) => b.total - a.total)

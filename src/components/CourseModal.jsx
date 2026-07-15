@@ -1,8 +1,9 @@
 // src/components/CourseModal.jsx
 import { useEffect, useMemo, useState } from 'react'
+import { doc, updateDoc, arrayUnion, arrayRemove, serverTimestamp } from 'firebase/firestore'
 import { X, BookOpen, User, FileText, CalendarDays, ToggleLeft, Hash, Loader2, ListChecks } from 'lucide-react'
+import { db } from '../firebase/config'
 import { toDateInputString, fromDateInputString } from '../utils/dateHelpers'
-import { useClassActions } from '../hooks/useClassActions'
 
 const emptyForm = {
   courseName: '',
@@ -19,23 +20,24 @@ const MAX_PROGRESS_ROWS = 200
 // Single modal for both creating and editing a course.
 //   mode: 'create' | 'edit'
 //   initialCourse: existing course doc (id + fields) when mode === 'edit'
-//   courseClasses: existing class docs belonging to this course (edit mode only) —
-//     feeds the "Course Progress" checklist below Total Classes.
-export default function CourseModal({ open, mode = 'create', initialCourse, courseClasses = [], onClose, onSubmit }) {
+//
+// The "Course Progress" checklist below is a standalone bookkeeping tool
+// scoped to the course document itself (`completedClassNumbers`, a plain
+// array of numbers) — it deliberately never reads or writes the `classes`
+// collection. Checking a box here must never create, update, or otherwise
+// affect a real class record, so it can't leak onto the Class Links page.
+// Class Links' completion state is only ever changed by marking a class
+// complete directly, on that page.
+export default function CourseModal({ open, mode = 'create', initialCourse, onClose, onSubmit }) {
   const [form, setForm] = useState(emptyForm)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [pendingNumbers, setPendingNumbers] = useState(() => new Set())
 
-  const { setClassProgress } = useClassActions()
-
-  const classByNumber = useMemo(() => {
-    const map = new Map()
-    for (const cls of courseClasses) {
-      if (cls.classNumber != null) map.set(Number(cls.classNumber), cls)
-    }
-    return map
-  }, [courseClasses])
+  const completedNumbers = useMemo(
+    () => new Set((initialCourse?.completedClassNumbers || []).map(Number)),
+    [initialCourse]
+  )
 
   // (Re)populate the form whenever the modal opens, or when the course being edited changes.
   useEffect(() => {
@@ -66,11 +68,13 @@ export default function CourseModal({ open, mode = 'create', initialCourse, cour
   }
 
   async function handleToggleClassNumber(classNumber, nextChecked) {
-    if (pendingNumbers.has(classNumber)) return
+    if (!initialCourse || pendingNumbers.has(classNumber)) return
     setPendingNumbers((prev) => new Set(prev).add(classNumber))
     try {
-      const existing = classByNumber.get(classNumber)
-      await setClassProgress(initialCourse, classNumber, nextChecked, existing?.id)
+      await updateDoc(doc(db, 'courses', initialCourse.id), {
+        completedClassNumbers: nextChecked ? arrayUnion(classNumber) : arrayRemove(classNumber),
+        updatedAt: serverTimestamp(),
+      })
     } catch (err) {
       console.error(err)
     } finally {
@@ -269,8 +273,7 @@ export default function CourseModal({ open, mode = 'create', initialCourse, cour
               </label>
               <div className="max-h-56 space-y-1 overflow-y-auto rounded-xl border border-slate-200 bg-slate-50 p-3">
                 {Array.from({ length: progressRowCount }, (_, i) => i + 1).map((classNumber) => {
-                  const existing = classByNumber.get(classNumber)
-                  const completed = Boolean(existing?.completed)
+                  const completed = completedNumbers.has(classNumber)
                   const isPending = pendingNumbers.has(classNumber)
                   return (
                     <label
@@ -291,7 +294,8 @@ export default function CourseModal({ open, mode = 'create', initialCourse, cour
                 })}
               </div>
               <p className="mt-1.5 text-xs text-slate-400">
-                Checking a class saves it immediately — the Dashboard updates automatically.
+                This is a separate checklist for your own reference — it saves immediately, but doesn't create or
+                change any class on the Class Links page.
               </p>
             </div>
           )}

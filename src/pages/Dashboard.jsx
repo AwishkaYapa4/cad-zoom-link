@@ -10,6 +10,7 @@ import UserCourseDetailsModal from '../components/UserCourseDetailsModal'
 import { StatCardSkeletonGrid, CourseCardSkeletonGrid } from '../components/Skeleton'
 import { useAuth } from '../context/AuthContext'
 import { toJsDate, formatClassDate, formatClassTime } from '../utils/dateHelpers'
+import { getCourseCompletion } from '../utils/courseProgress'
 
 export default function Dashboard() {
   const { isAdmin } = useAuth()
@@ -53,15 +54,12 @@ export default function Dashboard() {
 
   const courseProgressRows = useMemo(() => {
     return courses.map((course) => {
-      const courseClasses = classes.filter((c) => c.courseId === course.id)
-      const completedLive = courseClasses.filter((c) => c.completed).length
-      const totalForRow = course.totalClasses || courseClasses.length
-      const remaining = Math.max(0, totalForRow - completedLive)
+      const { total, completed, remaining } = getCourseCompletion(course, classes)
       return {
         courseId: course.id,
         courseName: course.courseName,
-        totalClasses: totalForRow,
-        completedClasses: completedLive,
+        totalClasses: total,
+        completedClasses: completed,
         remainingClasses: remaining,
         // Both roles open a details popup in place now — admin gets the
         // full manage view (CourseDetailsModal), staff gets the read-only
